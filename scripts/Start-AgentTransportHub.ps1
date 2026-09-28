@@ -22,15 +22,13 @@ if ($Foreground) {
   & node $Entry
   exit $LASTEXITCODE
 }
-$Command = 'cmd.exe /d /s /c "node ' + $Entry + ' 1>>' + $OutLog + ' 2>>' + $ErrLog + '"'
-$Created = Invoke-CimMethod -ClassName Win32_Process -MethodName Create -Arguments @{ CommandLine = $Command }
-if ($Created.ReturnValue -ne 0) { throw "Hub process creation failed: $($Created.ReturnValue)" }
-Set-Content -NoNewline -Encoding ASCII $PidFile ([string]$Created.ProcessId)
+$Created = Start-Process -FilePath 'node' -ArgumentList @($Entry) -WorkingDirectory $Root -RedirectStandardOutput $OutLog -RedirectStandardError $ErrLog -WindowStyle Hidden -PassThru
+Set-Content -NoNewline -Encoding ASCII $PidFile ([string]$Created.Id)
 Start-Sleep -Milliseconds 700
-$Existing = Get-CimInstance Win32_Process -Filter "ProcessId=$($Created.ProcessId)" -ErrorAction SilentlyContinue
+$Existing = Get-CimInstance Win32_Process -Filter "ProcessId=$($Created.Id)" -ErrorAction SilentlyContinue
 if ($null -eq $Existing) {
   $ErrorText = if (Test-Path $ErrLog) { Get-Content -Raw $ErrLog } else { 'no stderr' }
   Remove-Item -Force $PidFile -ErrorAction SilentlyContinue
   throw "Hub failed to start: $ErrorText"
 }
-Write-Output "hub started pid=$($Created.ProcessId)"
+Write-Output "hub started pid=$($Created.Id)"
