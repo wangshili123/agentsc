@@ -1,0 +1,19 @@
+{
+  "hubUrl": "http://test.cxrry.com:47320/agent-transport",
+  "listenHost": "0.0.0.0",
+  "listenPort": 47420,
+  "workspaceId": "ws_c2e526ec8600e78b",
+  "internalKey": "GHtygIeD_fEAj0bpm0ll-1UUolCTE5Q3dESlVQLuwc4",
+  "keyId": "primary-2026-09",
+  "stateDir": "~/.agent-transport",
+  "dataDir": "./data",
+  "idleReturnMs": 570000,
+  "httpPollMs": 30000,
+  "maxInboxPerResult": 10,
+  "maxImageBytes": 8388608,
+  "maxImagesPerMessage": 8,
+  "commandOutputSliceBytes": 65536,
+  "commandPollMs": 3000,
+  "clientMode": "transport",
+  "legacyFallback": true
+}

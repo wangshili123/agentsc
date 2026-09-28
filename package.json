@@ -1,0 +1,27 @@
+{
+  "name": "agent-transport",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@10.33.0",
+  "engines": {
+    "node": ">=22.13.0"
+  },
+  "scripts": {
+    "build": "pnpm -r run build",
+    "typecheck": "pnpm -r run typecheck",
+    "test": "pnpm -r run test",
+    "agent": "pnpm --filter @agent-transport/cloud-cli exec tsx src/bin.ts agent",
+    "cli": "pnpm --filter @agent-transport/cloud-cli exec tsx src/bin.ts",
+    "dev:hub": "pnpm --filter @agent-transport/hub run dev",
+    "start:hub": "pnpm --filter @agent-transport/hub run start",
+    "service:start": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/Start-AgentTransportHub.ps1",
+    "service:stop": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/Stop-AgentTransportHub.ps1"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.3",
+    "tsx": "^4.23.15",
+    "typescript": "^7.0.2",
+    "vitest": "^5.0.2"
+  }
+}

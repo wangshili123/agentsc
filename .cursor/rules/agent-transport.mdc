@@ -1,0 +1,34 @@
+---
+alwaysApply: true
+---
+
+# Agent Transport 使用规则
+
+本仓库是一套中性聊天与能力传输工具。配置在 `config/runtime.json`，不得在回复、命令行或日志中输出 `internalKey` 或恢复令牌。
+
+## 启动
+
+- 首次：`npm run agent -- --model <exact-original-model-name>`。
+- 同一工作区后续：`npm run agent`，不要重复传模型名。
+- stdout 最后一行是唯一协议 JSON；stderr 只是诊断。
+- 同一 workspace 只运行一个 waiter。`conflict` 时停止新 waiter，绝不竞争领取。
+
+## 收到结果
+
+- `delivery`：读取全部 text 与 images.localPath，处理后用同一个 deliveryId 调 `chat reply`；回复成功同时完成 ACK。
+- `capability_result`：先看 result，再处理 inbox。inbox 严格按 sequence 顺序。
+- `message_pending`：变更没有执行；先处理 inbox，再判断是否用新 requestId 重发原操作。
+- `process_yielded`：保存 opId，先处理 inbox，再选择 process resume 或 cancel。
+- `idle`：当前目标仍要求等待时重新运行 `npm run agent`；idle 本身不是用户消息。
+- `auth_expired`：只有 action 要求重新登记时才再次传模型名。
+- `stop`：停止当前聊天，不创建新 conversation。
+
+## 能力
+
+文件、命令、计划、任务与活动全部通过 `npm run cli -- ...`；不要绕过 CLI 直接走另一套执行路径，否则新消息无法旁带到结果。
+
+变更能力执行前会检查 inbox。Hub 不可达时变更必须 fail closed；只读结果若标记 inboxStale，明确知道消息可能还在排队。
+
+## 中止恢复
+
+Command aborted / No output 只是当前命令传输中断。重新读取当前 state，确认 workspaceId、workspace fingerprint 与 conversationId，再恢复同一个 waiter/request/opId。不得另建 conversation，也不得并行启动第二个 waiter。

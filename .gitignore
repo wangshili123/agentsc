@@ -3,8 +3,9 @@ dist/
 coverage/
 .env
 .env.*
-config/runtime.local.json
+# config/runtime.json is intentionally versioned in this private repository
 .agent-state/
+.runtime/
 data/
 logs/
 *.log

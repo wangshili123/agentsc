@@ -1,0 +1,22 @@
+{
+  "name": "@agent-transport/cloud-cli",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "bin": {
+    "agent-transport": "./dist/bin.js"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run",
+    "agent": "tsx src/bin.ts agent",
+    "cli": "tsx src/bin.ts"
+  },
+  "dependencies": {
+    "@agent-transport/protocol": "workspace:*"
+  },
+  "devDependencies": {
+    "@agent-transport/hub": "workspace:*"
+  }
+}

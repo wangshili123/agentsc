@@ -73,7 +73,7 @@ agent-transport/
     testkit/              # 假 Hub、假桌面端、断网与重放场景
   config/
     runtime.example.json  # 无密钥模板
-    runtime.local.json    # 部署配置，Git 忽略
+    runtime.json          # 私有仓库正式配置，含 workspaceId 与内部密钥
   docs/
     architecture.md
   package.json
@@ -98,7 +98,7 @@ Hub 不读取用户项目文件。文件与命令结果只在当前会话、当�
 
 ### 5.2 Cloud CLI
 
-- 读取 `config/runtime.local.json`；
+- 读取私有仓库内的 `config/runtime.json`；
 - 首次登记 exact 模型名；
 - 保存和恢复当前会话状态；
 - 在前台执行长等待；
@@ -127,8 +127,9 @@ Hub 不读取用户项目文件。文件与命令结果只在当前会话、当�
 
 ```json
 {
-  "hubUrl": "https://chat-hub.example.com",
-  "internalKey": "replace-at-deploy-time",
+  "hubUrl": "http://test.cxrry.com:47320/agent-transport",
+  "workspaceId": "ws_example",
+  "internalKey": "replace-in-private-repository",
   "stateDir": "~/.agent-transport",
   "idleReturnMs": 570000,
   "httpPollMs": 30000,
@@ -139,7 +140,7 @@ Hub 不读取用户项目文件。文件与命令结果只在当前会话、当�
 
 规则：
 
-- `runtime.local.json` 由部署过程写入，不进入 Git；Windows 只允许当前账号和 SYSTEM，Linux 权限 0600。
+- 按操作者决定，`runtime.json` 与真实内部密钥提交到私有仓库，Cloud clone 后无需额外注入；仓库必须保持私有，泄露时立即轮换密钥并吊销恢复令牌。
 - 内部密钥只用于换取短期会话令牌；Hub 返回的恢复令牌按会话保存并可吊销。
 - 模型名不是身份凭证，只用于展示、路由能力与兼容判断。
 - 首次命令带 `--model`；若已有有效状态又传不同模型，CLI 返回 `model_conflict`，不得静默覆盖。
@@ -148,13 +149,9 @@ Hub 不读取用户项目文件。文件与命令结果只在当前会话、当�
 
 ### 6.1 “克隆后只传模型名”的前提
 
-如果云端只是从 Git 克隆一个干净仓库，仓库又不提交真实密钥，那么部署环境必须在运行前提供 `runtime.local.json`。可选方式：
+本项目采用私有仓库内置 `runtime.json`：Hub 地址、workspaceId 与内部密钥随 clone 到达，AI首次只显式传 exact 模型名。内部密钥仍是真正凭证，模型名只用于能力与展示。
 
-1. Cloud 环境预置该文件；
-2. clone 后由平台 bootstrap 脚本写入；
-3. 私有构建镜像挂载该文件。
-
-如果三者都没有，就无法同时满足“仓库不含密钥”和“启动时只传模型名”。不得用模型名代替认证。
+该便利性换来明确风险：私有仓库成员、Git 凭据或历史泄露会同时泄露 Hub 凭证。因此协议必须从第一版支持 `keyId`、密钥轮换、短期恢复令牌和全会话吊销；不得把内部密钥打印到 stdout、日志或命令行。
 
 ## 7. Cloud CLI 命令
 
@@ -588,8 +585,10 @@ Cloud CLI：
 - 前台等待目标约 10 分钟，内部使用短网络轮询；
 - 所有能力结果都通过统一 middleware 旁带 inbox；
 - 变更能力在执行前遇到新消息必须先让 AI处理；
-- 配置文件承载 Hub 地址与内部密钥；真实配置不进入 Git；
-- 首期从可靠文本、图片、ACK、恢复和桌面能力开始，再接路线图与任务协作。
+- 私有仓库提交 `config/runtime.json`，内含 `workspaceId + internalKey`，Cloud首次只再传模型名；
+- Hub 独立监听 `0.0.0.0:47420`；现场公网未转发 47420，因此 Cloud 通过现有 47320 的 `/agent-transport` 透明代理访问；
+- 现有桌面客户端增加 transport 模式开关，旧通道保留回退，同一聊天只允许一个通道领取；
+- 第一阶段直接实现可靠文本、图片、ACK、恢复、桌面全部能力，再接路线图与任务协作。
 
 ## 23. AI 使用规则如何随 clone 生效
 
@@ -610,21 +609,21 @@ Cloud CLI：
 
 ## 24. 实施前仍需完善和拍板
 
-### 24.1 配置文件如何出现在全新 Cloud VM
+### 24.1 配置文件如何出现在全新 Cloud VM（已拍板）
 
-这是当前最大缺口。Git 中不放真实密钥，而启动词又只传模型名，则 `runtime.local.json` 必须由 Cloud 环境、bootstrap 脚本或私有镜像预置。需要从三种方式中选一种；否则一命令启动无法成立。
+使用私有仓库提交的 `config/runtime.json`，clone 后直接可读。实施必须增加私有仓库泄露告警、keyId、双钥轮换和全令牌吊销；不得因配置随仓库到达而省略短期令牌。
 
 ### 24.2 “后续不传模型名”的范围
 
 推荐定义为“同一 stateDir 且恢复令牌有效”。全新 VM、删除 state、令牌吊销或 workspace 绑定变化时必须重新登记模型；不能让一个状态文件跨机器永久通用。
 
-### 24.3 仓库可见性与 clone 认证
+### 24.3 仓库可见性与 clone 认证（已拍板）
 
-若仓库公开，内部密钥绝不能提交；若仓库私有，Cloud VM还要先具备 Git 凭据，这与“clone 后只传模型名”是另一项部署前置。需要确定公开仓 + 外部配置，还是私有仓 + 预置 Git 凭据。
+仓库必须是私有仓库，真实内部密钥随仓库提交。Cloud VM仍需预先具备该私有仓库的只读 Git 凭据；这是启动前置，不属于 `npm run agent` 的参数。
 
-### 24.4 Hub 部署地址
+### 24.4 Hub 部署地址（首期已拍板）
 
-需要确定域名、TLS、端口、反向代理最大请求时长和图片对象目录。外层 9 分 30 秒进程不依赖单条长 HTTP，但 30 秒轮询、上传大小和 WebSocket 都需要代理显式配置。
+Hub 监听 `0.0.0.0:47420`。现场路由没有直接开放公网 47420，首期由现有公网 47320 将 `/agent-transport/*` 流式代理到本机 47420，Cloud 地址为 `http://test.cxrry.com:47320/agent-transport`；该地址已从独立 Cloud VM 验证。外层 9 分 30 秒进程不依赖单条长 HTTP，代理上游 timeout 为 40 秒，覆盖 30 秒内部轮询。真实使用前必须迁移 HTTPS。
 
 ### 24.5 断网时变更能力是否执行
 
@@ -665,4 +664,4 @@ SQLite 适合单机证明协议，不适合多实例共享。需明确首期目�
 
 即使内部密钥写本地配置，也必须支持 keyId、双钥过渡、吊销和短期会话令牌。共享内部密钥泄露时只靠换仓库文件无法立即踢掉已登记会话。
 
-以上问题不阻止继续细化协议，但 24.1、24.3、24.4 三项必须在开始编码 Hub 前拍板。
+24.1、24.3、24.4 已拍板。剩余条目作为实现验收项，不阻塞开始编码。

@@ -1,6 +1,10 @@
 {
   "hubUrl": "https://chat-hub.example.com",
+  "listenHost": "0.0.0.0",
+  "listenPort": 47420,
+  "workspaceId": "ws_replace_me",
   "internalKey": "WRITE_AT_DEPLOY_TIME",
+  "keyId": "primary",
   "stateDir": "~/.agent-transport",
   "idleReturnMs": 570000,
   "httpPollMs": 30000,
