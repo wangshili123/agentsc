@@ -1,0 +1,12 @@
+{
+  "hubUrl": "https://chat-hub.example.com",
+  "internalKey": "WRITE_AT_DEPLOY_TIME",
+  "stateDir": "~/.agent-transport",
+  "idleReturnMs": 570000,
+  "httpPollMs": 30000,
+  "maxInboxPerResult": 10,
+  "maxImageBytes": 8388608,
+  "maxImagesPerMessage": 8,
+  "commandOutputSliceBytes": 65536,
+  "commandPollMs": 3000
+}
