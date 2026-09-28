@@ -22,13 +22,22 @@ if ($Foreground) {
   & node $Entry
   exit $LASTEXITCODE
 }
-$Created = Start-Process -FilePath 'node' -ArgumentList @($Entry) -WorkingDirectory $Root -RedirectStandardOutput $OutLog -RedirectStandardError $ErrLog -WindowStyle Hidden -PassThru
-Set-Content -NoNewline -Encoding ASCII $PidFile ([string]$Created.Id)
-Start-Sleep -Milliseconds 700
-$Existing = Get-CimInstance Win32_Process -Filter "ProcessId=$($Created.Id)" -ErrorAction SilentlyContinue
-if ($null -eq $Existing) {
+$Command = 'cmd.exe /d /s /c "node ' + $Entry + ' 1>>' + $OutLog + ' 2>>' + $ErrLog + '"'
+$Created = Invoke-CimMethod -ClassName Win32_Process -MethodName Create -Arguments @{ CommandLine = $Command }
+if ($Created.ReturnValue -ne 0) { throw "Hub process creation failed: $($Created.ReturnValue)" }
+$Listener = $null
+for ($Attempt = 0; $Attempt -lt 30 -and $null -eq $Listener; $Attempt += 1) {
+  Start-Sleep -Milliseconds 100
+  $Listener = Get-NetTCPConnection -State Listen -LocalPort 47420 -ErrorAction SilentlyContinue | Select-Object -First 1
+}
+if ($null -eq $Listener) {
   $ErrorText = if (Test-Path $ErrLog) { Get-Content -Raw $ErrLog } else { 'no stderr' }
-  Remove-Item -Force $PidFile -ErrorAction SilentlyContinue
   throw "Hub failed to start: $ErrorText"
 }
-Write-Output "hub started pid=$($Created.Id)"
+$HubPid = [int]$Listener.OwningProcess
+$Existing = Get-CimInstance Win32_Process -Filter "ProcessId=$HubPid" -ErrorAction SilentlyContinue
+if ($null -eq $Existing -or $Existing.CommandLine -notlike "*$Entry*") {
+  throw "Port 47420 is owned by another process"
+}
+Set-Content -NoNewline -Encoding ASCII $PidFile ([string]$HubPid)
+Write-Output "hub started pid=$HubPid"
